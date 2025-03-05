@@ -12,7 +12,7 @@ public class DownloadHmac : IHttpHandler
     
     public void ProcessRequest(HttpContext context)
     {
-        // Явно указываем кодировку UTF-8 для ответа
+        // Указываем кодировку UTF-8 для ответа
         context.Response.ContentEncoding = Encoding.UTF8;
         try
         {
@@ -22,6 +22,19 @@ public class DownloadHmac : IHttpHandler
                 context.Response.StatusCode = 405;
                 context.Response.Write("Only GET method is allowed.");
                 return;
+            }
+            
+            // Проверяем IP адрес клиента, если ключ AllowedIP задан в appSettings
+            string allowedIP = ConfigurationManager.AppSettings["AllowedIP"];
+            if (!string.IsNullOrEmpty(allowedIP))
+            {
+                string requestIP = context.Request.UserHostAddress;
+                if (!requestIP.Equals(allowedIP, StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = 403;
+                    context.Response.Write("Forbidden IP.");
+                    return;
+                }
             }
             
             // Считываем заголовок X-HMAC-Signature
@@ -77,12 +90,11 @@ public class DownloadHmac : IHttpHandler
             context.Response.ContentType = "application/octet-stream; charset=utf-8";
             context.Response.AddHeader("Content-Disposition", "attachment; filename=\"" + safeFileName + "\"");
             context.Response.WriteFile(fullPath);
-            // Вместо Response.End() вызываем CompleteRequest(), чтобы избежать ThreadAbortException
             context.ApplicationInstance.CompleteRequest();
         }
         catch (Exception ex)
         {
-            // Выводим подробное описание ошибки (для отладки)
+            // Для отладки – выводим подробное описание ошибки в UTF-8
             context.Response.ContentType = "text/plain; charset=utf-8";
             context.Response.StatusCode = 500;
             context.Response.Write("Server error:\n" + ex.ToString());
