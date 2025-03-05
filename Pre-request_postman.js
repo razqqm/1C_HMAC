@@ -1,4 +1,5 @@
 // Получаем секрет из переменной или задаем напрямую
+// задайте в HEADERS KEY=X-HMAC-Signature и VALUE={{HMACSignature}}
 var secret = "SUPER_SECRET_123";
 
 // Получаем имя файла из переменной окружения "fileName"; если переменная не задана, используем значение "test.txt"
