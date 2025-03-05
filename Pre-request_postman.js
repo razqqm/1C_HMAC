@@ -1,21 +1,23 @@
-// Получаем секрет из переменной или задаем напрямую
-// задайте в HEADERS KEY=X-HMAC-Signature и VALUE={{HMACSignature}}
+// Задаем секрет. Убедитесь, что он совпадает с тем, что указан в web.config (HmacSecret)
 var secret = "SUPER_SECRET_123";
 
-// Получаем имя файла из переменной окружения "fileName"; если переменная не задана, используем значение "test.txt"
-var fileName = pm.environment.get("fileName") || "test.txt";
+// Извлекаем параметр "file" из URL запроса.
+// Используем lodash, которая встроена в Postman.
+var fileParam = _.find(pm.request.url.query.all(), function(q) {
+    return q.key === "file";
+});
+var fileName = fileParam ? fileParam.value : "test.txt"; // если параметр не найден, используется "test.txt"
 
-// Формируем каноническую строку в формате:
-// "GET\n{имя файла}\n"
+// Формируем каноническую строку: "GET\n{имя файла}\n"
 // Обязательно с переводом строки в конце.
 var canonicalString = "GET\n" + fileName + "\n";
 
-// Вычисляем HMAC-SHA256 с использованием CryptoJS (библиотека встроена в Postman)
+// Вычисляем HMAC-SHA256 с использованием CryptoJS (встроена в Postman)
 var signature = CryptoJS.HmacSHA256(canonicalString, secret).toString(CryptoJS.enc.Hex);
 
 // Сохраняем вычисленное значение в переменную окружения "HMACSignature"
 pm.environment.set("HMACSignature", signature);
 
-// Для отладки выводим каноническую строку и вычисленную подпись в консоль
+// Выводим в консоль для отладки
 console.log("Canonical String: " + canonicalString);
 console.log("Computed Signature: " + signature);
