@@ -34,33 +34,131 @@ C:\_files_iis\
 
 3. **Перезапустите сайт в IIS** (или выполните IISReset).
 
-
 ## Настройка конфигурации (автоматически)
 
-1. Переименуйте файл `web.config.template` в `web.config`.
-2. Откройте `web.config` и замените следующие плейсхолдеры на реальные значения:
-   - `%FILES_FOLDER%` – путь к папке с файлами (например, `C:\_files_iis\files`)
-   - `%HMAC_SECRET%` – секрет для HMAC (например, `SUPER_SECRET_123`)
-   - `%ALLOWED_IP%` – список разрешённых IP (например, `192.168.1.100,192.168.1.101`)
-   - `%ALLOWED_DOMAIN%` – разрешённый домен (если используется)
+Для автоматической подстановки значений в файл конфигурации мы используем шаблон `web.config.template` и GitHub Actions. Это позволяет заменить плейсхолдеры на реальные значения из переменных окружения (например, GitHub Secrets) во время сборки или развертывания.
 
+### Шаги:
+
+1. **Подготовьте шаблон конфигурации.**  
+   В корне репозитория разместите файл `web.config.template` со следующим содержимым:
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <configuration>
+     <appSettings>
+       <!-- Путь к папке с файлами -->
+       <add key="FilesFolder" value="%FILES_FOLDER%" />
+       <!-- Секрет для HMAC -->
+       <add key="HmacSecret" value="%HMAC_SECRET%" />
+       <!-- Разрешённые IP-адреса (несколько, разделяются запятыми) -->
+       <add key="AllowedIP" value="%ALLOWED_IP%" />
+       <!-- Разрешённый домен (опционально) -->
+       <add key="AllowedDomain" value="%ALLOWED_DOMAIN%" />
+     </appSettings>
+     
+     <system.web>
+       <compilation debug="true" targetFramework="4.7" />
+       <httpRuntime maxRequestLength="2147483647" maxQueryStringLength="2097151" />
+       <customErrors mode="Off" />
+       <globalization requestEncoding="utf-8" responseEncoding="utf-8" fileEncoding="utf-8" culture="en-US" uiCulture="en-US" />
+     </system.web>
+     
+     <location path="." inheritInChildApplications="false" />
+     
+     <system.webServer>
+       <httpErrors existingResponse="PassThrough" />
+       <rewrite>
+         <rules>
+           <clear />
+         </rules>
+       </rewrite>
+       <handlers>
+         <clear />
+         <add name="ASHX" 
+              path="*.ashx" 
+              verb="*" 
+              type="System.Web.UI.SimpleHandlerFactory, System.Web, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
+              resourceType="Unspecified"
+              preCondition="integratedMode,runtimeVersionv4.0" />
+         <add name="PageHandlerFactory-Integrated"
+              path="*.aspx"
+              verb="*"
+              type="System.Web.UI.PageHandlerFactory"
+              resourceType="Unspecified"
+              requireAccess="Script"
+              preCondition="integratedMode,runtimeVersionv4.0" />
+       </handlers>
+     </system.webServer>
+   </configuration>
+   ```
+
+2. **Настройте GitHub Secrets.**  
+   В настройках репозитория (Settings → Secrets) создайте следующие секреты:
+   - `FILES_FOLDER` – например, `C:\_files_iis\files`
+   - `HMAC_SECRET` – например, `SUPER_SECRET_123`
+   - `ALLOWED_IP` – например, `192.168.1.100,192.168.1.101`
+   - `ALLOWED_DOMAIN` – например, `allowed.domain.com` (если используется)
+
+3. **Добавьте GitHub Actions workflow.**  
+   Создайте файл `.github/workflows/deploy.yml` со следующим содержимым:
+
+   ```yaml
+   name: Deploy Web.Config
+
+   on:
+     push:
+       branches:
+         - main
+
+   jobs:
+     build:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout code
+           uses: actions/checkout@v3
+
+         - name: Replace placeholders in web.config
+           shell: bash
+           env:
+             FILES_FOLDER: ${{ secrets.FILES_FOLDER }}
+             HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
+             ALLOWED_IP: ${{ secrets.ALLOWED_IP }}
+             ALLOWED_DOMAIN: ${{ secrets.ALLOWED_DOMAIN }}
+           run: |
+             echo "Replacing placeholders in web.config.template..."
+             if [ ! -f web.config.template ]; then
+               echo "File web.config.template not found in the repository root!"
+               exit 1
+             fi
+             sed -e "s|%FILES_FOLDER%|${FILES_FOLDER}|g" \
+                 -e "s|%HMAC_SECRET%|${HMAC_SECRET}|g" \
+                 -e "s|%ALLOWED_IP%|${ALLOWED_IP}|g" \
+                 -e "s|%ALLOWED_DOMAIN%|${ALLOWED_DOMAIN}|g" \
+                 web.config.template > web.config
+             cat web.config
+   ```
+
+   Этот workflow запускается при пуше в ветку `main`, заменяет все плейсхолдеры в файле `web.config.template` на значения из GitHub Secrets и сохраняет итоговый файл как `web.config`.
 
 ## Конфигурация (вручную)
 
-Откройте файл **web.config** и настройте необходимые параметры в секции `appSettings`:
+Если вы предпочитаете настроить конфигурацию вручную, выполните следующие шаги:
 
-```xml
-<appSettings>
-  <!-- Путь к папке с файлами -->
-  <add key="FilesFolder" value="C:\_files_iis\files" />
-  <!-- Секрет для HMAC -->
-  <add key="HmacSecret" value="SUPER_SECRET_123" />
-  <!-- Разрешённые IP-адреса (несколько, разделяются запятыми) -->
-  <add key="AllowedIP" value="192.168.1.100,192.168.1.101" />
-  <!-- Разрешённый домен (опционально) -->
-  <add key="AllowedDomain" value="allowed.domain.com" />
-</appSettings>
-```
+1. Переименуйте файл `web.config.template` в `web.config`.
+2. Откройте файл `web.config` в текстовом редакторе и замените следующие плейсхолдеры на реальные значения:
+   - **%FILES_FOLDER%** – путь к папке с файлами (например, `C:\_files_iis\files`)
+   - **%HMAC_SECRET%** – секрет для HMAC (например, `SUPER_SECRET_123`)
+   - **%ALLOWED_IP%** – список разрешённых IP (например, `192.168.1.100,192.168.1.101`)
+   - **%ALLOWED_DOMAIN%** – разрешённый домен (если используется, например, `allowed.domain.com`)
+3. Сохраните файл.
+
+Дополнительные настройки в секциях `<system.web>` и `<system.webServer>` уже настроены для компиляции, кодировки и обработки ошибок.
+
+## Итог
+
+- **Автоматическая конфигурация:** Используйте GitHub Actions для автоматической замены плейсхолдеров в `web.config.template` с помощью переменных окружения, заданных в GitHub Secrets.
+- **Ручная конфигурация:** Переименуйте файл `web.config.template` в `web.config` и вручную замените плейсхолдеры на реальные значения.
 
 Дополнительно в секциях `<system.web>` и `<system.webServer>` задаются параметры компиляции, кодировки и обработки ошибок.
 
