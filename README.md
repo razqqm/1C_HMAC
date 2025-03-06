@@ -40,67 +40,14 @@ C:\_files_iis\
 
 ### Шаги:
 
-1. **Подготовьте шаблон конфигурации.**  
-   В корне репозитория разместите файл `web.config.template` со следующим содержимым:
-
-   ```xml
-   <?xml version="1.0" encoding="utf-8"?>
-   <configuration>
-     <appSettings>
-       <!-- Путь к папке с файлами -->
-       <add key="FilesFolder" value="%FILES_FOLDER%" />
-       <!-- Секрет для HMAC -->
-       <add key="HmacSecret" value="%HMAC_SECRET%" />
-       <!-- Разрешённые IP-адреса (несколько, разделяются запятыми) -->
-       <add key="AllowedIP" value="%ALLOWED_IP%" />
-       <!-- Разрешённый домен (опционально) -->
-       <add key="AllowedDomain" value="%ALLOWED_DOMAIN%" />
-     </appSettings>
-     
-     <system.web>
-       <compilation debug="true" targetFramework="4.7" />
-       <httpRuntime maxRequestLength="2147483647" maxQueryStringLength="2097151" />
-       <customErrors mode="Off" />
-       <globalization requestEncoding="utf-8" responseEncoding="utf-8" fileEncoding="utf-8" culture="en-US" uiCulture="en-US" />
-     </system.web>
-     
-     <location path="." inheritInChildApplications="false" />
-     
-     <system.webServer>
-       <httpErrors existingResponse="PassThrough" />
-       <rewrite>
-         <rules>
-           <clear />
-         </rules>
-       </rewrite>
-       <handlers>
-         <clear />
-         <add name="ASHX" 
-              path="*.ashx" 
-              verb="*" 
-              type="System.Web.UI.SimpleHandlerFactory, System.Web, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
-              resourceType="Unspecified"
-              preCondition="integratedMode,runtimeVersionv4.0" />
-         <add name="PageHandlerFactory-Integrated"
-              path="*.aspx"
-              verb="*"
-              type="System.Web.UI.PageHandlerFactory"
-              resourceType="Unspecified"
-              requireAccess="Script"
-              preCondition="integratedMode,runtimeVersionv4.0" />
-       </handlers>
-     </system.webServer>
-   </configuration>
-   ```
-
-2. **Настройте GitHub Secrets.**  
+1. **Настройте GitHub Secrets.**  
    В настройках репозитория (Settings → Secrets) создайте следующие секреты:
    - `FILES_FOLDER` – например, `C:\_files_iis\files`
    - `HMAC_SECRET` – например, `SUPER_SECRET_123`
    - `ALLOWED_IP` – например, `192.168.1.100,192.168.1.101`
    - `ALLOWED_DOMAIN` – например, `allowed.domain.com` (если используется)
 
-3. **Добавьте GitHub Actions workflow.**  
+2. **Добавьте GitHub Actions workflow.**  
    Создайте файл `.github/workflows/deploy.yml` со следующим содержимым:
 
    ```yaml
