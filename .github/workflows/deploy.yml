@@ -1,0 +1,31 @@
+name: Deploy Web.Config
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Replace placeholders in web.config
+        shell: bash
+        env:
+          FILES_FOLDER: ${{ secrets.FILES_FOLDER }}
+          HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
+          ALLOWED_IP: ${{ secrets.ALLOWED_IP }}
+          ALLOWED_DOMAIN: ${{ secrets.ALLOWED_DOMAIN }}
+        run: |
+          echo "Replacing placeholders in web.config.template..."
+          sed -e "s|%FILES_FOLDER%|${FILES_FOLDER}|g" \
+              -e "s|%HMAC_SECRET%|${HMAC_SECRET}|g" \
+              -e "s|%ALLOWED_IP%|${ALLOWED_IP}|g" \
+              -e "s|%ALLOWED_DOMAIN%|${ALLOWED_DOMAIN}|g" \
+              web.config.template > web.config
+          cat web.config  # для проверки вывода
+          
+      # Дополнительные шаги, например, сборка или развертывание, могут быть добавлены здесь
